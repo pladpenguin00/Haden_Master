@@ -21,7 +21,6 @@ curr_pos =
 
 
 
-origin = (0,0)
 
 
 def cost_callback(data):
@@ -54,11 +53,15 @@ def listener():
     rospy.spin()
 
 def rotate_translate(pos, goal, angle):
-    ox, oy = pos
-    gx, gy = goal
-
-    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
-    qy = oy + math.sin(angle) * (px - ox) - math.cos(angle) * (py - oy)
+    #ox = pos.x
+    #oy = pos.y
+    gx = goal.x - pos.x
+    gy = goal.y - pos.y 
+	
+	
+	
+    qx = 0 + math.cos(angle) * (gx - 0) - math.sin(angle) * (gy - 0)
+    qy = 0 + math.sin(angle) * (gx - 0) - math.cos(angle) * (gy - 0)
 
     return qx, qy
 
@@ -84,10 +87,22 @@ while True:
     mask = cost < 1250000
     available_path = path[mask]
     target_heading = min(available_path, key=lambda x:abs(x-heading)) - 180
-        #left is negative right is positive
-
+        
+	
     if not any(mask)==False:
-        target_heading = 180
+        nextpos= [ 0, 0, 180]
+	if any(mask)==TRUE	
+		if target_heading/(abs(target_heading)) == 1 
+			a = 10
+			A = abs(-90 + target_heading)
+			X = abs(-180 + target_heading +90)
+			nextx = math.sin(X) * a / math.sin(X) 
+			nexty = math.sin(90) * a / math.sin(A)
+		if target_heading/(abs(target_heading)) == -1 
+			a = 10
+			A = 90 + target_heading
+			X = 180 + target_heading - 90
+			nextx = math.sin(X) * a / math.sin(X) 
+			nexty = math.sin(90) * a / math.sin(A)
 
-    pub = rospy.Publisher('target_heading', int64, queue_size=1)
-    pub.publish(target_heading)
+    
