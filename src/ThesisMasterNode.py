@@ -33,10 +33,10 @@ class ThesisMasterNode():
         # Init our ROS Config server
         self.server = DynamicReconfigureServer(GoalConfig, self.config_callback)
         # Create a subscriber with appropriate topic, custom message and name of callback function.
-        rospy.Subscriber(topic, node_example_data, cost_callback)
-        rospy.Subscriber(topic, node_example_data, pos_callback)
-        rospy.Subscriber(topic, node_example_data, curr_goal_callback)
-
+        rospy.Subscriber("odom_pos", pos, self.pos_callback)
+        rospy.Subscriber("goal", curr_goal, self.curr_goal_callback)
+        pubx = rospy.Publisher("x_pos", int64, queue_size=1)
+        puby = rospy.Publisher("y_pos", int64, queue_size=1)
         # By the time we get to the end of __init__, we might not even need a while loop. 
         #  If the only time we're "thinking" is when we get a new image, odometry, or goal, then we
         #  can just use those functions to run our program. Think "event-based" programming
@@ -50,13 +50,13 @@ class ThesisMasterNode():
 
     def pos_callback(data):
 		# Simply print out values in our custom message.
-		global cost
-		cost = data
+		global pos
+		pos = data
 
     def curr_goal_callback(data):
 		# Simply print out values in our custom message.
-		global cost
-		cost = data
+		global curr_goal
+		curr_goal = data
     def odom_callback(self, msg):
         # This contains code we'll execute when we get new odometry information
         # We'll get odometry info at a rate around 30Hz
@@ -96,44 +96,46 @@ class ThesisMasterNode():
 
     #MAIN PART O
     def output
-    angle = rad * 180 / math.pi
+		angle = rad * 180 / math.pi
 
-    #where are we
-    updated_goal = rotate_translate(origin, pos, angle)
-		#output [x, y]
-    #where to go
-    heading = math.degrees(math.atan(updated_goal["y"]/updated_goal["x"]))
+		#where are we
+		updated_goal = rotate_translate(pos, curr_goal, angle)
+			#output [x, y]
+		#where to go
+		heading = math.degrees(math.atan(updated_goal["y"]/updated_goal["x"]))
 
-    #compare available heading based off cost
-    path = np.arange(228, 140, -8)
+		#compare available heading based off cost
+		path = np.arange(228, 140, -8)
+	
+		if updated_goal["y"] ** 2 + updated_goal["x"] ** 2 < 20:
+			path = np.arange(195, 162, -3)
 
-    if updated_goal["y"] ** 2 + updated_goal["x"] ** 2 < 20:
-        path = np.arange(195, 162, -3)
-
-    mask = cost < 1250000
-    available_path = path[mask]
-    target_heading = min(available_path, key=lambda x:abs(x-heading)) - 180
+		mask = cost < 1250000
+		available_path = path[mask]
+		target_heading = min(available_path, key=lambda x:abs(x-heading)) - 180
         
 	
-    if all(mask)==False:
-        nextpos= [ 0, 0, 180]
-    if any(mask)==TRUE	
-		if target_heading > 0
-			a = 10
-			A = abs(-90 + target_heading)
-			X = abs(-180 + target_heading +90)
-			nextx = math.sin(X) * a / math.sin(A) 
-			nexty = math.sin(90) * a / math.sin(A)
-		if target_heading < 0
-			a = 10
-			A = 90 + target_heading
-			X = 180 + target_heading - 90
-			nextx = math.sin(X) * a / math.sin(A) 
-			nexty = math.sin(90) * a / math.sin(A)	
+		if all(mask)==False:
+			nextx = 0
+			nexty = 0
+			# if the nextx and nexty are 0 the robot needs to rotate 180 
+		if any(mask)==TRUE	
+			if target_heading > 0
+				a = 10
+				A = abs(-90 + target_heading)
+				X = abs(-180 + target_heading +90)
+				nextx = math.sin(X) * a / math.sin(A) 
+				nexty = math.sin(90) * a / math.sin(A)
+			if target_heading < 0
+				a = 10
+				A = 90 + target_heading
+				X = 180 + target_heading - 90
+				nextx = math.sin(X) * a / math.sin(A) 
+				nexty = math.sin(90) * a / math.sin(A)	
     
 	
-    pub.publish(nextx)
-    pub.publish(nexty)	
+		pubx.publish(nextx)
+		puby.publish(nexty)	
 
 if __name__ == '__main__':
     rospy.init_node("ThesisMasterNode")
@@ -141,6 +143,6 @@ if __name__ == '__main__':
         # This will initialize our class, calling ThesisMasterNode.__init__ implicitly
         tmn = ThesisMasterNode()
         listener()
-        main()
+        output()
     except rospy.ROSInterruptException:
         pass
