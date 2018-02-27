@@ -196,8 +196,6 @@ class ThesisMasterNode(object):
         # This will be called very rarely (only when the user provides new input)
 		
 
-
-
     def rotate_translate(pos, goal, angle):
 		#ox = pos.x
 		#oy = pos.y
