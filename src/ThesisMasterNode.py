@@ -62,8 +62,7 @@ class ThesisMasterNode(object):
         # __init__ is much like a c++ constructor function, implicitly called, and used to initialize things
 
         # Init our ROS Subscribers
-        rospy.Subscriber("odom", Odometry, self.odom_callback)
-        
+        self.sub_pose = rospy.Subscriber('odom', Odometry, self.odom_callback)
         # Init our ROS Config server
         self.server = DynamicReconfigureServer(GoalConfig, self.config_callback)
         # Create a subscriber with appropriate topic, custom message and name of callback function.
@@ -75,6 +74,7 @@ class ThesisMasterNode(object):
         # By the time we get to the end of __init__, we might not even need a while loop. 
         #  If the only time we're "thinking" is when we get a new image, odometry, or goal, then we
         #  can just use those functions to run our program. Think "event-based" programming
+        self.odom = Odometry()
         rospy.spin()
         
     def post_process_disparity(disp):
@@ -134,11 +134,10 @@ class ThesisMasterNode(object):
 		# Simply print out values in our custom message.
 		global curr_goal
 		curr_goal = data
-    def odom_callback(self, msg):
-        # This contains code we'll execute when we get new odometry information
-        # We'll get odometry info at a rate around 30Hz
-        # We might just save this data as a class member to call when we get new images
-        self.odom = msg
+		
+    def odom_callback(self, data):
+        self.odom = data
+
 
     def image_callback(self):
         # This contains code we'll execute when we receive a new image
@@ -191,9 +190,15 @@ class ThesisMasterNode(object):
 		return cost
 		
 		
-    def config_callback(self, config):
-        # This contains code we'll execute when we receive a new goal from a user.
-        # This will be called very rarely (only when the user provides new input)
+    def config_callback(self, config, level):
+        rospy.loginfo(("""\n\nReconfigure Request: """ +
+                       """\n--------------------\n""" +
+                       """X:\t\t{x_goal} \n""" +
+                       """Y:\t\t{y_goal} \n""").format(**config))
+
+        self.config = config
+        return self.config
+
 		
 
     def rotate_translate(pos, goal, angle):
@@ -235,7 +240,8 @@ class ThesisMasterNode(object):
 	
     def NewTarget(cost)
 		#MAIN PART O
-
+		pos = self.odom.pose.pose.position
+		
 		angle = rad * 180 / math.pi
 
 		#where are we
@@ -272,6 +278,10 @@ class ThesisMasterNode(object):
 				X = 180 + target_heading - 90
 				nextx = math.sin(X) * a / math.sin(A) 
 				nexty = math.sin(90) * a / math.sin(A)	
+        
+		
+		nextx = pos.x
+		nexty = pos.y 
         pubx.publish(nextx)
         puby.publish(nexty)	  
 	
