@@ -14,13 +14,13 @@ class MaintainDistanceNode(object):
 #Initial
 	#collect 100 bbox heights 
 
-	count=0
-	while count < 100
-		rospy.Subscriber("bbox", bbox, self.bbox_callback)
+		count=0
+		while count < 100
+			rospy.Subscriber("bbox", bbox, self.bbox_callback)
 		
-		height = bbox_bottom - bbox_top
-		np.insert(a, count, height)
-		count=count+1
+			height[count] = bbox_bottom - bbox_top
+			np.insert(a, count, height)
+			count=count+1
 		#find distribution
 
 		
@@ -30,8 +30,8 @@ class MaintainDistanceNode(object):
 		plus100=mu100+std_dev100
 		minus100=mu100-std_dev100
 		
-	rospy.Subscriber("bbox", bbox, self.bbox_callback)
-	rospy.spin()
+		rospy.Subscriber("bbox", bbox, self.bbox_callback)
+		rospy.spin()
 	
 #LOOP
 
