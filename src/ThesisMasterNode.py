@@ -9,7 +9,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='0'
 import numpy as np
 import argparse
 import re
-import time
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import scipy.misc
@@ -39,20 +38,18 @@ from std_msgs.msg import String
 
 import sys
 import math
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-import time
 import struct
 
 
-from dynamic_reconfigure.server import Server as DynamicReconfigureServer
-
 # Messages
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
+import tf_conversions as tf
 
 # Configs
+from dynamic_reconfigure.server import Server as DynamicReconfigureServer
+import dynamic_reconfigure.client
 from Haden_Master.cfg import GoalConfig # this file would be cfg/GoalConfig.cfg
 from pid_position_controller.cfg import Config
 
@@ -60,21 +57,26 @@ from pid_position_controller.cfg import Config
 class ThesisMasterNode(object):
     def __init__(self):
         # __init__ is much like a c++ constructor function, implicitly called, and used to initialize things
+		client = dynamic_reconfigure.client.Client("pid_controller", timeout=1, config_callback=callback)
 
+        rospy.Subscriber("odom_pos", pos, self.pos_callback)
+        rospy.Subscriber("goal", curr_goal, self.curr_goal_callback)
+        rospy.Subscriber("image", Image, self.image_callback)
         # Init our ROS Subscribers
         self.sub_pose = rospy.Subscriber('odom', Odometry, self.odom_callback)
         # Init our ROS Config server
         self.server = DynamicReconfigureServer(GoalConfig, self.config_callback)
         # Create a subscriber with appropriate topic, custom message and name of callback function.
-        rospy.Subscriber("odom_pos", pos, self.pos_callback)
-        rospy.Subscriber("goal", curr_goal, self.curr_goal_callback)
-        rospy.Subscriber("image", Image, self.image_callback)
+		
         pubx = rospy.Publisher("x_pos", int64, queue_size=1)
         puby = rospy.Publisher("y_pos", int64, queue_size=1)
+        pubtheta = rospy.Publisher("theta", int64, queue_size=1)
         # By the time we get to the end of __init__, we might not even need a while loop. 
         #  If the only time we're "thinking" is when we get a new image, odometry, or goal, then we
         #  can just use those functions to run our program. Think "event-based" programming
         self.odom = Odometry()
+        mainparam()
+		
         rospy.spin()
         
     def post_process_disparity(disp):
@@ -94,7 +96,7 @@ class ThesisMasterNode(object):
 		left  = tf.placeholder(tf.float32, [2, args.input_height, args.input_width, 3])
 		model = MonodepthModel(params, "test", left, None)
     
-		#t0=time.time()
+		# t0=time.time()
 		input_image = scipy.misc.imread(args.image_path, mode="RGB")
 		original_height, original_width, num_channels = input_image.shape
 		width=512
@@ -139,13 +141,12 @@ class ThesisMasterNode(object):
         self.odom = data
 
 
-    def image_callback(self):
+    def image_callback(self, image):
         # This contains code we'll execute when we receive a new image
         # This could be called up to 30Hz
-        # This function will probably be the one that configs the pid_position_controller node
-		image = self		
+        # This function will probably be the one that configs the pid_position_controller node		
 		t0=time.time()
-		input_image = image
+		input_image = self
 		original_height, original_width, num_channels = input_image.shape
 		width=512
 		height=256
@@ -187,7 +188,8 @@ class ThesisMasterNode(object):
 		cost[8] = np.sum(imgnum[0][361:406])
 		cost[9] = np.sum(imgnum[0][406:451])
 		cost[10] = np.sum(imgnum[0][451:496])
-		return cost
+		
+		NewTarget(cost)
 		
 		
     def config_callback(self, config, level):
@@ -202,8 +204,7 @@ class ThesisMasterNode(object):
 		
 
     def rotate_translate(pos, goal, angle):
-		#ox = pos.x
-		#oy = pos.y
+
 		gx = goal.x - pos.x
 		gy = goal.y - pos.y 
 	
@@ -211,7 +212,7 @@ class ThesisMasterNode(object):
 	
 		qx = 0 + math.cos(angle) * (gx - 0) - math.sin(angle) * (gy - 0)
 		qy = 0 + math.sin(angle) * (gx - 0) - math.cos(angle) * (gy - 0)
-
+     
 		return {"x": qx, "y": qy}
 
     def mainparam(_):
@@ -241,6 +242,12 @@ class ThesisMasterNode(object):
     def NewTarget(cost)
 		#MAIN PART O
 		pos = self.odom.pose.pose.position
+		quat = self.odom.pose.pose.orientation
+        olist = [quat.x, quat.y, quat.z, quat.w]
+        euler = tf.transformations.euler_from_quaternion(olist)
+
+        # Theta holds values in the range of [-pi, pi]
+        theta = euler[2]
 		
 		angle = rad * 180 / math.pi
 
@@ -260,30 +267,32 @@ class ThesisMasterNode(object):
 		available_path = path[mask]
 		target_heading = min(available_path, key=lambda x:abs(x-heading)) - 180
         
-	
-		if all(mask)==False:
+		
+		if all(mask) == False:
 			nextx = 0
 			nexty = 0
+			next_angle = pi + theta 
+			client.update_configuration({"theta_goal":next_angle, "ang_tol":math.pi/8 , "size":1})
 			# if the nextx and nexty are 0 the robot needs to rotate 180 
-		if any(mask)==TRUE	
+		if any(mask) == True	
 			if target_heading > 0
 				a = 10
 				A = abs(-90 + target_heading)
 				X = abs(-180 + target_heading +90)
 				nextx = math.sin(X) * a / math.sin(A) 
 				nexty = math.sin(90) * a / math.sin(A)
+				nextx = pos.x + nextx
+				nexty = pos.y + nexty
+				client.update_configuration({"x_goal":nextx, "y_goal":nexty, "ang_tol":4 , "size":1})
 			if target_heading < 0
 				a = 10
 				A = 90 + target_heading
 				X = 180 + target_heading - 90
 				nextx = math.sin(X) * a / math.sin(A) 
-				nexty = math.sin(90) * a / math.sin(A)	
-        
-		
-		nextx = pos.x
-		nexty = pos.y 
-        pubx.publish(nextx)
-        puby.publish(nexty)	  
+				nexty = math.sin(90) * a / math.sin(A)
+				nextx = pos.x + nextx
+				nexty = pos.y + nexty
+				client.update_configuration({"x_goal":nextx, "y_goal":nexty, "ang_tol":4 , "size":1})		
 	
 
 
@@ -292,8 +301,7 @@ if __name__ == '__main__':
     try:
         # This will initialize our class, calling ThesisMasterNode.__init__ implicitly
         tmn = ThesisMasterNode()
-        mainparam()
-        NewTarget(cost)
 
-    except rospy.ROSInterruptException:
-        pass
+
+	except rospy.ROSInterruptException:
+	   pass
