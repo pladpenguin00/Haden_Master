@@ -26,8 +26,8 @@ from numpy.polynomial import Polynomial as P
 
 class DepthCodeNode(object):
     def __init__(self):
-			rospy.Subscriber("picture_timestamp", array, picture_timestamp_listener)
-	rospy.Subscriber("pos", int32, pos_listener)
+		rospy.Subscriber("picture_timestamp", array, picture_timestamp_listener)
+		rospy.Subscriber("pos", int32, pos_listener)
 
 
 
