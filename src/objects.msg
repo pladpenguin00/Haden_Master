@@ -1,0 +1,10 @@
+uint32 object1
+uint32 object2
+uint32 object3
+uint32 object4
+uint32 object5
+uint32 object6
+uint32 object7
+uint32 object8
+uint32 object9
+uint32 object10
